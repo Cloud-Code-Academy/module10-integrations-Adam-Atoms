@@ -1,3 +1,4 @@
+
 /*
  * DummyJSONCallout Class Description:
  * 
@@ -21,22 +22,18 @@
  * https://developer.salesforce.com/docs/atlas.en-us.apexref.meta/apexref/apex_classes_restful_http_httprequest.htm
  */
 
-
- //is this okay???
 public with sharing class DummyJSONCallout {
 
-    /*
-     * Question 1
-     * Fetches user information from an external system via GET.
-     * Replaces the @future getDummyJSONAsync method with a Queueable job.
-     *
-     * @param jsonIds A list of DummyJSON_Id__c external IDs to fetch.
+	/* 
+	 * Question 1
+     * Fetches user information from an external system https://dummyjson.com/user/{id} ('DummyJsonUser') based on the provided dummy user ID. 
+     * If the callout is successful and returns an HTTP status of 200, the method will update a contact based on the DummyJSON_Id__c with the data returned from the external system.
+	 * Use the createContactFromJson method to parse the JSON response and create a Salesforce Contact object.
+     * Documentation: https://dummyjson.com/docs/users
+	 * This callout method should work in triggers
+	 * 
+     * @param dummyUserId The ID of the user in the external system to fetch data for.
      */
-    public static void enqueueGetDummyJSONAsync(List<String> jsonIds) {
-        if (!jsonIds.isEmpty()) {
-            System.enqueueJob(new GetDummyJSONUserQueueable(jsonIds));
-        }
-    }
 
 	@future(callout=true)
 	public static void getDummyJSONAsync(List<String> JsonIds) {

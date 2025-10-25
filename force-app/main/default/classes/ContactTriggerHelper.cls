@@ -1,5 +1,3 @@
-//is this okay???
-
 public with sharing class ContactTriggerHelper {
 
     public static void checkIds(List<Contact> contacts) {
