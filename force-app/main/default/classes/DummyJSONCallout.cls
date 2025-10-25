@@ -35,7 +35,6 @@ public with sharing class DummyJSONCallout {
      * @param dummyUserId The ID of the user in the external system to fetch data for.
      */
 
-	@future(callout=true)
 	public static void getDummyJSONAsync(List<String> JsonIds) {
 		for (String j : JsonIds) {
 			getDummyJSONUserFromId(j);
@@ -122,7 +121,6 @@ public with sharing class DummyJSONCallout {
      * @param contactId The Salesforce Contact ID used to generate the JSON payload for the external system.
      */
 	
-	@future(callout=true)
 	public static void postDummyJsonAsync(List<Id> contIds){
 		for (Id i : contIds) {
 			postCreateDummyJSONUser(i);
