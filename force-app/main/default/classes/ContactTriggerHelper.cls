@@ -1,5 +1,8 @@
+<<<<<<< HEAD
 //is this okay???
 
+=======
+>>>>>>> 564414b22ecbf89208a703bbee08d299a1774579
 public with sharing class ContactTriggerHelper {
 
     public static void checkIds(List<Contact> contacts) {
