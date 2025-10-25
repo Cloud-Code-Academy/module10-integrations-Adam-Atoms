@@ -38,7 +38,6 @@ public with sharing class DummyJSONCallout {
         }
     }
 
-<<<<<<< HEAD
 	@future(callout=true)
 	public static void getDummyJSONAsync(List<String> JsonIds) {
 		for (String j : JsonIds) {
@@ -196,93 +195,4 @@ public with sharing class DummyJSONCallout {
 		
 		return contJson;
 	}
-=======
-    /*
-     * Question 3
-     * Sends Contact information to an external system via POST.
-     * Replaces the @future postDummyJsonAsync method with a Queueable job.
-     *
-     * @param contactIds The list of Salesforce Contact IDs to send.
-     */
-    public static void enqueuePostDummyJsonAsync(List<Id> contactIds) {
-        if (!contactIds.isEmpty()) {
-            System.enqueueJob(new PostDummyJSONUserQueueable(contactIds));
-        }
-    }
-
-    /*
-     * Question 2
-     * Transforms a JSON response into a Salesforce Contact object.
-     * (No change, helper method)
-     *
-     * @param jsonResponse The JSON string from the external system.
-     * @return The Salesforce Contact object.
-     */
-    @TestVisible
-    private static Contact createContactFromJson(String jsonResponse) {
-        if (String.isBlank(jsonResponse)) {
-            return null;
-        }
-        
-        try {
-            Map<String, Object> responseMap = (Map<String, Object>) JSON.deserializeUntyped(jsonResponse);
-            if (responseMap == null || responseMap.isEmpty()) {
-                return null;
-            }
-            
-            Contact cont = new Contact();
-            cont.DummyJSON_Id__c = String.valueOf((Object) responseMap.get('id'));
-            cont.FirstName = (String) responseMap.get('firstName');
-            cont.LastName = (String) responseMap.get('lastName');
-            cont.Email = (String) responseMap.get('email');
-            cont.Phone = (String) responseMap.get('phone');
-            
-            String birthDateStr = (String) responseMap.get('birthDate');
-            if (birthDateStr != null) {
-                cont.Birthdate = Date.valueOf(birthDateStr);
-            }
-            
-            Map<String, Object> addressMap = (Map<String, Object>) responseMap.get('address');
-            if (addressMap != null) {
-                cont.MailingStreet = (String) addressMap.get('address');
-                cont.MailingCity = (String) addressMap.get('city');
-                cont.MailingPostalCode = (String) addressMap.get('postalCode');
-                cont.MailingState = (String) addressMap.get('state');
-                cont.MailingCountry = (String) addressMap.get('country');
-            }
-            return cont;
-
-        } catch (Exception e) {
-            System.debug(LoggingLevel.ERROR, 'Error deserializing JSON or creating contact: ' + e.getMessage());
-            return null;
-        }
-    }
-
-    /*
-     * Question 4
-     * Generates a JSON payload from a Salesforce Contact record.
-     * (No change, helper method)
-     *
-     * @param contactId The Salesforce Contact ID.
-     * @return The JSON payload string.
-     */
-    @TestVisible
-    private static String generateDummyJsonUserPayload(String contactId) {
-        Contact cont = [
-            SELECT Id, FirstName, LastName, Email, Phone
-            FROM Contact
-            WHERE Id = :contactId
-            LIMIT 1
-        ];
-
-        Map<String, Object> payloadMap = new Map<String, Object>();
-        payloadMap.put('id', cont.Id);
-        payloadMap.put('firstName', cont.FirstName);
-        payloadMap.put('lastName', cont.LastName);
-        payloadMap.put('email', cont.Email);
-        payloadMap.put('phone', cont.Phone);
-
-        return JSON.serialize(payloadMap);
-    }
->>>>>>> 564414b22ecbf89208a703bbee08d299a1774579
 }

@@ -16,11 +16,8 @@
  * 
  * Optional Challenge: Use a trigger handler class to implement the trigger logic.
  */
-<<<<<<< HEAD
 
 //is this okay???
-=======
->>>>>>> 564414b22ecbf89208a703bbee08d299a1774579
 trigger ContactTrigger on Contact(before insert, after update) {
 	// When a contact is inserted
 	if (trigger.isBefore && trigger.isInsert) {
