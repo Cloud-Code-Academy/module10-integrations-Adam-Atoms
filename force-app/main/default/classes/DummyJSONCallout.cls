@@ -23,172 +23,104 @@
 
 public with sharing class DummyJSONCallout {
 
-	/* 
-	 * Question 1
-     * Fetches user information from an external system https://dummyjson.com/user/{id} ('DummyJsonUser') based on the provided dummy user ID. 
-     * If the callout is successful and returns an HTTP status of 200, the method will update a contact based on the DummyJSON_Id__c with the data returned from the external system.
-	 * Use the createContactFromJson method to parse the JSON response and create a Salesforce Contact object.
-     * Documentation: https://dummyjson.com/docs/users
-	 * This callout method should work in triggers
-	 * 
-     * @param dummyUserId The ID of the user in the external system to fetch data for.
+    /*
+     * Question 1
+     * Fetches user information from an external system via GET.
+     * Replaces the @future getDummyJSONAsync method with a Queueable job.
+     *
+     * @param jsonIds A list of DummyJSON_Id__c external IDs to fetch.
      */
+    public static void enqueueGetDummyJSONAsync(List<String> jsonIds) {
+        if (!jsonIds.isEmpty()) {
+            System.enqueueJob(new GetDummyJSONUserQueueable(jsonIds));
+        }
+    }
 
-	@future(callout=true)
-	public static void getDummyJSONAsync(List<String> JsonIds) {
-		for (String j : JsonIds) {
-			getDummyJSONUserFromId(j);
-		}
-	}
-
-	public static void getDummyJSONUserFromId(String dummyUserId) {
-		// Create HTTP request to send.
-		try {
-			HttpRequest userRequest = new HttpRequest();
-			// Set the endpoint URL. Use direct URL or for best practices use Named Credential.
-			userRequest.setEndpoint('callout:DummyJsonUser');
-			// Set the HTTP method to GET.
-			userRequest.setMethod('GET');
-			// Send the HTTP request and get the response.
-			Http dummyJson = new Http();
-			HttpResponse userResponse = dummyJson.send(userRequest);
-			// If the HTTP response code is successful, parse the JSON response and update the contact.
-			if(userResponse.getStatusCode() == 200) {
-				String jsonBody = userResponse.getBody();
-				Contact cont = DummyJSONCallout.createContactFromJson(jsonBody);
-				upsert cont DummyJSON_Id__c; //insert/update from the JSON response using the external id (dummyUserId)
-			}
-		} catch (CalloutException e) {
-			System.debug('Error getting and upserting contact ::: ' + e.getMessage());
-		}
-	}
-
-	/* 
-	 * Question 2
-     * Transforms a JSON response from the external system https://dummyjson.com/users into a Salesforce Contact object.
-     * The method parses the JSON string to extract user details and map them to a Salesforce Contact object.
-     * The contact fields populated from the JSON include Email, Phone, Birthdate, and various address-related fields.
-     * The method is primarily designed to work in conjunction with callouts that fetch user details from the external system. 
-	 * 
-	 * Fields from JSON used to populate Salesforce Contact
-	 * Fields: Email, Phone, Birthdate, MailingStreet, MailingCity, MailingPostalCode, MailingState, MailingCountry
-	 * 
-     * Documentation: https://dummyjson.com/docs/users
-     * 
-     * @param String jsonResponse The JSON string from the external system that contains user details.
-     * @return Contact The Salesforce Contact object populated with details from the JSON string.
+    /*
+     * Question 3
+     * Sends Contact information to an external system via POST.
+     * Replaces the @future postDummyJsonAsync method with a Queueable job.
+     *
+     * @param contactIds The list of Salesforce Contact IDs to send.
      */
-	@TestVisible // Allows test class to see this method. Since it is private, it would not be visible otherwise.
-	private static Contact createContactFromJson(String jsonResponse) {
-		// Deserialize the JSON string into map of primitive data types.
-		Map<String, Object> responseMap = (Map<String, Object>)(JSON.deserializeUntyped(jsonResponse));
-		// Create a new contact from the JSON response.
-		if(responseMap == null || responseMap.isEmpty()) {
-			return null;
-		}
-		Contact cont = new Contact();
-		cont.DummyJSON_Id__c = String.valueOf((Integer)responseMap.get('id'));
-		// Set the contact fields from the JSON response.
-		cont.FirstName = (String)responseMap.get('firstName');
-		cont.LastName = (String)responseMap.get('lastName');
-		cont.Email = (String)responseMap.get('email');
-		cont.Phone = (String)responseMap.get('phone');
-		cont.Birthdate = Date.valueOf((String)responseMap.get('birthDate'));
-		// Deserialize the address from the JSON response.
-		Map<String, Object> addressMap = (Map<String, Object>) responseMap.get('address');
-		// Set the address fields on the contact.
-		if(addressMap != null && !addressMap.isEmpty()) {
-			cont.MailingStreet = (String)addressMap.get('address');
-			cont.MailingCity = (String)addressMap.get('city');
-			cont.MailingPostalCode = (String)addressMap.get('postalCode');
-			cont.MailingState = (String)addressMap.get('state');
-			cont.MailingCountry = (String)addressMap.get('country');
-		}
-		return cont;
-	}
+    public static void enqueuePostDummyJsonAsync(List<Id> contactIds) {
+        if (!contactIds.isEmpty()) {
+            System.enqueueJob(new PostDummyJSONUserQueueable(contactIds));
+        }
+    }
 
-	/* 
-	 * Question 3
-     * Sends Contact information to an external system https://dummyjson.com/users/add ('DummyJsonUser') to create or update a user based on the provided Salesforce Contact ID.
-     * The method prepares a JSON payload with the contact's information and sends it to the 'DummyJsonUser' add endpoint.
-     * If the callout is successful (HTTP status code between 200 and 299), the method updates the contact's 'DummyJSON_Last_Updated__c' field in Salesforce to the current time.
-	 * Salesforce Contact should be used to generate the JSON payload
-	 * Fields: Id, FirstName, LastName, Email, Phone
-	 * This callout method should work in triggers
-	 * 
-     * Documentation: https://dummyjson.com/docs/users
-     * 
-     * @param contactId The Salesforce Contact ID used to generate the JSON payload for the external system.
+    /*
+     * Question 2
+     * Transforms a JSON response into a Salesforce Contact object.
+     * (No change, helper method)
+     *
+     * @param jsonResponse The JSON string from the external system.
+     * @return The Salesforce Contact object.
      */
-	
-	@future(callout=true)
-	public static void postDummyJsonAsync(List<Id> contIds){
-		for (Id i : contIds) {
-			postCreateDummyJSONUser(i);
-		}
-	}
-	
-	public static void postCreateDummyJSONUser(String contactId) {
-		try {
-			// Create HTTP request to send.
-			HttpRequest postUserRequest = new HttpRequest();
-			// Set the endpoint URL. Use direct URL or for best practices use Named Credential.
-			postUserRequest.setEndpoint('callout:DummyJsonUser');
-			// Set the HTTP method to POST.
-			postUserRequest.setMethod('POST');
-			// Set the body using generateDummyJsonUserPayload method.
-			String contJsonBody = DummyJSONCallout.generateDummyJsonUserPayload(contactId);
-			// Send the HTTP request and get the response.
-			Http sendContactJson = new Http();
-			HttpResponse contactResponse = sendContactJson.send(postUserRequest);
-			// If the HTTP response code is successful, update the contact.
-			if (contactResponse.getStatusCode() == 200) {
-				Contact contToUpdate = new Contact();
-				contToUpdate.Id = contactId;
-				contToUpdate.DummyJSON_Last_Updated__c = Datetime.now();
-				update contToUpdate;
-			}
-		} catch (Exception e) {
-			System.debug('Erron on POST to DummyJSON ::: ' + e.getMessage());
-		}
-	}
+    @TestVisible
+    private static Contact createContactFromJson(String jsonResponse) {
+        if (String.isBlank(jsonResponse)) {
+            return null;
+        }
+        
+        try {
+            Map<String, Object> responseMap = (Map<String, Object>) JSON.deserializeUntyped(jsonResponse);
+            if (responseMap == null || responseMap.isEmpty()) {
+                return null;
+            }
+            
+            Contact cont = new Contact();
+            cont.DummyJSON_Id__c = String.valueOf((Object) responseMap.get('id'));
+            cont.FirstName = (String) responseMap.get('firstName');
+            cont.LastName = (String) responseMap.get('lastName');
+            cont.Email = (String) responseMap.get('email');
+            cont.Phone = (String) responseMap.get('phone');
+            
+            String birthDateStr = (String) responseMap.get('birthDate');
+            if (birthDateStr != null) {
+                cont.Birthdate = Date.valueOf(birthDateStr);
+            }
+            
+            Map<String, Object> addressMap = (Map<String, Object>) responseMap.get('address');
+            if (addressMap != null) {
+                cont.MailingStreet = (String) addressMap.get('address');
+                cont.MailingCity = (String) addressMap.get('city');
+                cont.MailingPostalCode = (String) addressMap.get('postalCode');
+                cont.MailingState = (String) addressMap.get('state');
+                cont.MailingCountry = (String) addressMap.get('country');
+            }
+            return cont;
 
-	/*
-	 * Question 4
-     * Generates a JSON payload based on a Salesforce Contact's fields to be sent to an external system https://dummyjson.com/users/add for user creation or update.
-     * The method queries a contact from Salesforce based on the provided contactId and maps its fields into a JSON payload.
-     * The fields from Salesforce Contact that are transformed into the JSON payload include Id, FirstName, LastName, Email, and Phone.
-     * The generated JSON payload can be sent to the external system for various operations like creating or updating a user.
-	 * 
-	 * Fields from Salesforce Contact used to generate JSON payload:
-	 * Fields: Id => salesforceId, FirstName => firstName, LastName => lastName, Email => email, Phone => phone
-	 * 
-     * Documentation: https://dummyjson.com/docs/users
-     * 
-     * @param String contactId The Salesforce Contact ID used to fetch the contact's fields and generate the JSON payload.
-     * @return String The JSON string payload that represents the Contact's details.
+        } catch (Exception e) {
+            System.debug(LoggingLevel.ERROR, 'Error deserializing JSON or creating contact: ' + e.getMessage());
+            return null;
+        }
+    }
+
+    /*
+     * Question 4
+     * Generates a JSON payload from a Salesforce Contact record.
+     * (No change, helper method)
+     *
+     * @param contactId The Salesforce Contact ID.
+     * @return The JSON payload string.
      */
-	@TestVisible // Allows test class to see this method. Since it is private, it would not be visible otherwise.
-	private static String generateDummyJsonUserPayload(String contactId) {
-		// Query the contact to get the field values to generate the JSON payload.
-		List<Contact> contList = [SELECT Id, FirstName, LastName, Email, Phone FROM Contact WHERE Id = :contactId];
-		// Create a map of the field values.
-		// Make sure to check that required contacts fields have a value. Default the value to unknown if it does not exists.
-		// Integration data can change over time. It is a best practice to add safeguards/validation to ensure the integration does not break.
-		if(contList.isEmpty()) {
-			return null;
-		}
-		Contact cont = contList[0];
-		Map<String, Object> contMap = new Map<String, Object>{
-			'salesforceId' => cont.Id,
-			'firstName' => String.isBlank(cont.FirstName) ? 'unknown' : cont.FirstName,
-			'lastName' => String.isBlank(cont.LastName) ? 'unknown' : cont.LastName,
-			'email' => String.isBlank(cont.Email) ? 'unknown' : cont.Email,
-			'phone' => String.isBlank(cont.Phone) ? 'unknown' : cont.Phone
-		};
-		// Serialize the map into a JSON string.
-		String contJson = JSON.serialize(contMap);
-		
-		return contJson;
-	}
+    @TestVisible
+    private static String generateDummyJsonUserPayload(String contactId) {
+        Contact cont = [
+            SELECT Id, FirstName, LastName, Email, Phone
+            FROM Contact
+            WHERE Id = :contactId
+            LIMIT 1
+        ];
+
+        Map<String, Object> payloadMap = new Map<String, Object>();
+        payloadMap.put('id', cont.Id);
+        payloadMap.put('firstName', cont.FirstName);
+        payloadMap.put('lastName', cont.LastName);
+        payloadMap.put('email', cont.Email);
+        payloadMap.put('phone', cont.Phone);
+
+        return JSON.serialize(payloadMap);
+    }
 }
